@@ -1,0 +1,1 @@
+# machinelearning class project details

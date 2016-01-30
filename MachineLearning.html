@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<title>Practical Machine Learning Course Project</title>
+
+<script type="text/javascript">
+window.onload = function() {
+  var imgs = document.getElementsByTagName('img'), i, img;
+  for (i = 0; i < imgs.length; i++) {
+    img = imgs[i];
+    // center an image if it is the only element of its parent
+    if (img.parentElement.childElementCount === 1)
+      img.parentElement.style.textAlign = 'center';
+  }
+};
+</script>
+
+
+
+
+
+<style type="text/css">
+body, td {
+   font-family: sans-serif;
+   background-color: white;
+   font-size: 13px;
+}
+
+body {
+  max-width: 800px;
+  margin: auto;
+  padding: 1em;
+  line-height: 20px;
+}
+
+tt, code, pre {
+   font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace;
+}
+
+h1 {
+   font-size:2.2em;
+}
+
+h2 {
+   font-size:1.8em;
+}
+
+h3 {
+   font-size:1.4em;
+}
+
+h4 {
+   font-size:1.0em;
+}
+
+h5 {
+   font-size:0.9em;
+}
+
+h6 {
+   font-size:0.8em;
+}
+
+a:visited {
+   color: rgb(50%, 0%, 50%);
+}
+
+pre, img {
+  max-width: 100%;
+}
+pre {
+  overflow-x: auto;
+}
+pre code {
+   display: block; padding: 0.5em;
+}
+
+code {
+  font-size: 92%;
+  border: 1px solid #ccc;
+}
+
+code[class] {
+  background-color: #F8F8F8;
+}
+
+table, td, th {
+  border: none;
+}
+
+blockquote {
+   color:#666666;
+   margin:0;
+   padding-left: 1em;
+   border-left: 0.5em #EEE solid;
+}
+
+hr {
+   height: 0px;
+   border-bottom: none;
+   border-top-width: thin;
+   border-top-style: dotted;
+   border-top-color: #999999;
+}
+
+@media print {
+   * {
+      background: transparent !important;
+      color: black !important;
+      filter:none !important;
+      -ms-filter: none !important;
+   }
+
+   body {
+      font-size:12pt;
+      max-width:100%;
+   }
+
+   a, a:visited {
+      text-decoration: underline;
+   }
+
+   hr {
+      visibility: hidden;
+      page-break-before: always;
+   }
+
+   pre, blockquote {
+      padding-right: 1em;
+      page-break-inside: avoid;
+   }
+
+   tr, img {
+      page-break-inside: avoid;
+   }
+
+   img {
+      max-width: 100% !important;
+   }
+
+   @page :left {
+      margin: 15mm 20mm 15mm 10mm;
+   }
+
+   @page :right {
+      margin: 15mm 10mm 15mm 20mm;
+   }
+
+   p, h2, h3 {
+      orphans: 3; widows: 3;
+   }
+
+   h2, h3 {
+      page-break-after: avoid;
+   }
+}
+</style>
+
+
+
+</head>
+
+<body>
+<h1>Practical Machine Learning Course Project</h1>
+
+<h2>Executive Summary:</h2>
+
+<p>This document describes methods to visualize arbitrary data sets. This uses the &#39;R Programming Language&#39; - a language used predominantly in statistics.
+In this project, we are using built in graphics packages with our custom R functions. 
+We are able to analyze one dimensional data, two dimensional data and correlations between multi dimensional data.
+This is very useful in doing exploratory data analysis and to understand the relationship between data better.
+In plotting 2 dimensional data, we are able to deal with non numeric data as well.</p>
+
+<h2>Cleaning up Data</h2>
+
+<p>traindata &lt;- read.csv(file=&quot;pml-training.csv&quot;,na.strings=c(&quot;NA&quot;,&quot;&quot;),header=TRUE,sep=&quot;,&quot;)
+testdata &lt;- read.csv(file=&quot;pml-testing.csv&quot;,na.strings=c(&quot;NA&quot;,&quot;&quot;),header=TRUE,sep=&quot;,&quot;)
+ncol(traindata)
+ncol(testdata)
+all.equal(colnm1[1:length(colnm1)-1],colnm2[1:length(colnm2)-1])</p>
+
+<p>[1] TRUE</p>
+
+<blockquote>
+<p>colnm1[160]
+[1] &quot;classe&quot;
+colnm2[160]
+[1] &quot;problem_id&quot;</p>
+</blockquote>
+
+<h3>Reducing unneeded columns</h3>
+
+<p>Enable parallel processing:
+library(parallel)
+library(doParallel)
+cluster &lt;- makeCluster(detectCores() - 1)
+registerDoParallel(cluster)</p>
+
+<p>First count NAs in each column and drop the ones that have NAs in them from both training and testing data set</p>
+
+<p>NACnt &lt;- function(x) {
+    as.vector(apply(x, 2, function(x) length(which(is.na(x)))))
+    }</p>
+
+<p>nadata &lt;- NACnt(traindata)</p>
+
+<h3>Removing the NA columns from training set</h3>
+
+<p>traindataupd &lt;- traindataupd[, !names(traindataupd) %in% dropCol]
+ncol(traindataupd)
+[1] 60
+traindataupd &lt;- traindataupd[,8:length(traindataupd)]
+ncol(traindataupd)
+[1] 53</p>
+
+<h3>Remove the NAs from the testing set</h3>
+
+<p>testdataupd &lt;- testdataupd[, !names(testdataupd) %in% dropCol]
+testdataupd &lt;- testdataupd[,8:length(testdataupd)]</p>
+
+<h3>The next step is to remove variables with very little variance using the nearZeroVar function</h3>
+
+<p>nzv &lt;- nearZeroVar(traindataupd)
+This shows that there are no variables with zero variance</p>
+
+<h2>Setting up training data for cross validation</h2>
+
+<p>We split the training set to two to do cross validation. First a seed is set to a prime number and the training data is split
+at 75% and 25% each.
+In addition, using trainControl method, we also do cross validation</p>
+
+<p>set.seed(53)
+pTrain &lt;- createDataPartition(y=traindataupd$classe, p=0.75, list=FALSE)
+partitionedTrain &lt;- traindataupd[pTrain,]
+partitionedTest &lt;- traindataupd[-pTrain,]</p>
+
+<h2>Using Random Forest Algorithm</h2>
+
+<h3>Use random forest algorithm to do the prediction</h3>
+
+<p>modelRF &lt;- train(partitionedTrain$classe ~ .,method = &quot;rf&quot;, trControl=trainControl(method = &quot;cv&quot;, number = 4),data=partitionedTrain)</p>
+
+<pre><code class="r">modelRF$finalModel
+</code></pre>
+
+<pre><code>## 
+## Call:
+##  randomForest(x = x, y = y, mtry = param$mtry) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 2
+## 
+##         OOB estimate of  error rate: 0.6%
+## Confusion matrix:
+##      A    B    C    D    E  class.error
+## A 4183    1    0    0    1 0.0004778973
+## B   15 2829    4    0    0 0.0066713483
+## C    1   16 2549    1    0 0.0070120764
+## D    0    0   39 2371    2 0.0169983416
+## E    0    0    2    6 2698 0.0029563932
+</code></pre>
+
+<pre><code class="r">predictResForData &lt;- predict(modelRF,testdataupd)
+predResForData
+</code></pre>
+
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E
+</code></pre>
+
+<h3>Building a model using all the training data and doing cross validation using trainControl method</h3>
+
+<p>Now check if there is a difference by using the full training data to build a model</p>
+
+<p>modelRFFull &lt;- train(traindataupd$classe ~ .,method = &quot;rf&quot;, trControl=trainControl(method = &quot;cv&quot;, number = 4),data=traindataupd)</p>
+
+<pre><code class="r">predResForDataFull &lt;- predict(modelRFFull,testdataupd)
+</code></pre>
+
+<h4>Validating with full training data:</h4>
+
+<pre><code class="r">predResFull &lt;- predict(modelRFFull,newdata=partitionedTest)
+confusionMatrix(partitionedTest$classe, predResFull)
+</code></pre>
+
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1395    0    0    0    0
+##          B    0  949    0    0    0
+##          C    0    0  855    0    0
+##          D    0    0    0  804    0
+##          E    0    0    0    0  901
+## 
+## Overall Statistics
+##                                      
+##                Accuracy : 1          
+##                  95% CI : (0.9992, 1)
+##     No Information Rate : 0.2845     
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16  
+##                                      
+##                   Kappa : 1          
+##  Mcnemar&#39;s Test P-Value : NA         
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            1.0000   1.0000   1.0000   1.0000   1.0000
+## Specificity            1.0000   1.0000   1.0000   1.0000   1.0000
+## Pos Pred Value         1.0000   1.0000   1.0000   1.0000   1.0000
+## Neg Pred Value         1.0000   1.0000   1.0000   1.0000   1.0000
+## Prevalence             0.2845   0.1935   0.1743   0.1639   0.1837
+## Detection Rate         0.2845   0.1935   0.1743   0.1639   0.1837
+## Detection Prevalence   0.2845   0.1935   0.1743   0.1639   0.1837
+## Balanced Accuracy      1.0000   1.0000   1.0000   1.0000   1.0000
+</code></pre>
+
+<h3>Testing it on the full training dataset shows the confusion matrix and accuracy of 100%.</h3>
+
+<pre><code class="r">predResForDataComplete &lt;- predict(modelRFFull,traindataupd)
+confusionMatrix(traindataupd$classe, predResForDataComplete)
+</code></pre>
+
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 5580    0    0    0    0
+##          B    0 3797    0    0    0
+##          C    0    0 3422    0    0
+##          D    0    0    0 3216    0
+##          E    0    0    0    0 3607
+## 
+## Overall Statistics
+##                                      
+##                Accuracy : 1          
+##                  95% CI : (0.9998, 1)
+##     No Information Rate : 0.2844     
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16  
+##                                      
+##                   Kappa : 1          
+##  Mcnemar&#39;s Test P-Value : NA         
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            1.0000   1.0000   1.0000   1.0000   1.0000
+## Specificity            1.0000   1.0000   1.0000   1.0000   1.0000
+## Pos Pred Value         1.0000   1.0000   1.0000   1.0000   1.0000
+## Neg Pred Value         1.0000   1.0000   1.0000   1.0000   1.0000
+## Prevalence             0.2844   0.1935   0.1744   0.1639   0.1838
+## Detection Rate         0.2844   0.1935   0.1744   0.1639   0.1838
+## Detection Prevalence   0.2844   0.1935   0.1744   0.1639   0.1838
+## Balanced Accuracy      1.0000   1.0000   1.0000   1.0000   1.0000
+</code></pre>
+
+<pre><code class="r">predResForDataFull
+</code></pre>
+
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E
+</code></pre>
+
+<pre><code class="r">modelRFFull$finalModel
+</code></pre>
+
+<pre><code>## 
+## Call:
+##  randomForest(x = x, y = y, mtry = param$mtry) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 2
+## 
+##         OOB estimate of  error rate: 0.44%
+## Confusion matrix:
+##      A    B    C    D    E  class.error
+## A 5577    2    0    0    1 0.0005376344
+## B   13 3779    5    0    0 0.0047405847
+## C    0   18 3403    1    0 0.0055523086
+## D    0    0   40 3174    2 0.0130597015
+## E    0    0    0    5 3602 0.0013861935
+</code></pre>
+
+<h3>Conclusion</h3>
+
+<p>We tried two models using random forest algorithm. The first one split the training set into two. 75% of the training set was used for
+training and the remaining 25% was used for cross validation. From the confusion matrix on the cross validation set, the accuracy in this case is lower
+at 99.35%.</p>
+
+<p>Then we tried using the full training set in the random forest algorithm using cross validation in the trainControl method. On testing the model
+on the full training set and the 25% training set used for cross validation earlier, the accuracy is 100%. The model&#39;s accuracy is also higher at 99.56%
+In the second case, the model is likely overfitting the training data.</p>
+
+<p>We used both the models on the testing set. The outputs from the two models were identical. On inputting the result into the quiz, all answers turned out to be correct.</p>
+
+</body>
+
+</html>

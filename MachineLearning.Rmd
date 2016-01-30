@@ -1,0 +1,116 @@
+# Practical Machine Learning Course Project
+## Executive Summary:
+This document describes methods to visualize arbitrary data sets. This uses the 'R Programming Language' - a language used predominantly in statistics.
+In this project, we are using built in graphics packages with our custom R functions. 
+We are able to analyze one dimensional data, two dimensional data and correlations between multi dimensional data.
+This is very useful in doing exploratory data analysis and to understand the relationship between data better.
+In plotting 2 dimensional data, we are able to deal with non numeric data as well.
+
+## Cleaning up Data
+traindata <- read.csv(file="pml-training.csv",na.strings=c("NA",""),header=TRUE,sep=",")
+testdata <- read.csv(file="pml-testing.csv",na.strings=c("NA",""),header=TRUE,sep=",")
+ncol(traindata)
+ncol(testdata)
+all.equal(colnm1[1:length(colnm1)-1],colnm2[1:length(colnm2)-1])
+
+[1] TRUE
+
+> colnm1[160]
+[1] "classe"
+> colnm2[160]
+[1] "problem_id"
+
+### Reducing unneeded columns 
+
+Enable parallel processing:
+library(parallel)
+library(doParallel)
+cluster <- makeCluster(detectCores() - 1)
+registerDoParallel(cluster)
+
+
+First count NAs in each column and drop the ones that have NAs in them from both training and testing data set
+
+NACnt <- function(x) {
+    as.vector(apply(x, 2, function(x) length(which(is.na(x)))))
+    }
+	
+nadata <- NACnt(traindata)
+
+### Removing the NA columns from training set
+traindataupd <- traindataupd[, !names(traindataupd) %in% dropCol]
+ncol(traindataupd)
+[1] 60
+traindataupd <- traindataupd[,8:length(traindataupd)]
+ncol(traindataupd)
+[1] 53
+
+### Remove the NAs from the testing set
+testdataupd <- testdataupd[, !names(testdataupd) %in% dropCol]
+testdataupd <- testdataupd[,8:length(testdataupd)]
+
+### The next step is to remove variables with very little variance using the nearZeroVar function
+nzv <- nearZeroVar(traindataupd)
+This shows that there are no variables with zero variance
+
+## Setting up training data for cross validation
+
+We split the training set to two to do cross validation. First a seed is set to a prime number and the training data is split
+at 75% and 25% each.
+In addition, using trainControl method, we also do cross validation
+
+set.seed(53)
+pTrain <- createDataPartition(y=traindataupd$classe, p=0.75, list=FALSE)
+partitionedTrain <- traindataupd[pTrain,]
+partitionedTest <- traindataupd[-pTrain,]
+
+## Using Random Forest Algorithm
+### Use random forest algorithm to do the prediction
+modelRF <- train(partitionedTrain$classe ~ .,method = "rf", trControl=trainControl(method = "cv", number = 4),data=partitionedTrain)
+
+```{r}
+modelRF$finalModel
+predictResForData <- predict(modelRF,testdataupd)
+predResForData
+```
+
+### Building a model using all the training data and doing cross validation using trainControl method
+
+Now check if there is a difference by using the full training data to build a model
+
+modelRFFull <- train(traindataupd$classe ~ .,method = "rf", trControl=trainControl(method = "cv", number = 4),data=traindataupd)
+
+```{r}
+predResForDataFull <- predict(modelRFFull,testdataupd)
+```
+
+#### Validating with full training data:
+
+
+```{r}
+predResFull <- predict(modelRFFull,newdata=partitionedTest)
+confusionMatrix(partitionedTest$classe, predResFull)
+```
+
+### Testing it on the full training dataset shows the confusion matrix and accuracy of 100%.
+
+```{r}
+predResForDataComplete <- predict(modelRFFull,traindataupd)
+confusionMatrix(traindataupd$classe, predResForDataComplete)
+predResForDataFull
+modelRFFull$finalModel
+```
+
+### Conclusion
+We tried two models using random forest algorithm. The first one split the training set into two. 75% of the training set was used for
+training and the remaining 25% was used for cross validation. From the confusion matrix on the cross validation set, the accuracy in this case is lower
+at 99.35%.
+
+Then we tried using the full training set in the random forest algorithm using cross validation in the trainControl method. On testing the model
+on the full training set and the 25% training set used for cross validation earlier, the accuracy is 100%. The model's accuracy is also higher at 99.56%
+In the second case, the model is likely overfitting the training data.
+
+We used both the models on the testing set. The outputs from the two models were identical. On inputting the result into the quiz, all answers turned out to be correct.
+
+
+
